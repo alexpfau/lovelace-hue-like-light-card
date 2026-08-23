@@ -121,6 +121,7 @@ export class HueLikeLightCardConfig extends HueLikeLightCardEntityConfig impleme
         this.hueScreenBgColor = plainConfig.hueScreenBgColor || Consts.DialogBgColor;
         this.offShadow = HueLikeLightCardConfig.getBoolean(plainConfig.offShadow, true);
         this.hueBorders = HueLikeLightCardConfig.getBoolean(plainConfig.hueBorders, true);
+        this.tileStyle = HueLikeLightCardConfig.getBoolean(plainConfig.tileStyle, true);
         this.apiId = plainConfig.apiId;
         this.isVisible = HueLikeLightCardConfig.getBoolean(plainConfig.isVisible, true);
 
@@ -308,6 +309,7 @@ export class HueLikeLightCardConfig extends HueLikeLightCardEntityConfig impleme
     public readonly hueScreenBgColor: string;
     public readonly offShadow: boolean;
     public readonly hueBorders: boolean;
+    public readonly tileStyle: boolean;
     public readonly apiId?: string;
     public readonly isVisible: boolean;
 

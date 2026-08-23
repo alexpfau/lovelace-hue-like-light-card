@@ -21,6 +21,7 @@ import { IdLitElement } from './core/id-lit-element';
 import { HueApiProvider } from './core/api-provider';
 import { ICardApi } from './types/types-api';
 import { LimitedTimeout } from './core/limited-timeout';
+import { NativeTileFactory } from './core/native-tile-factory';
 
 // Show version info in console
 VersionNotifier.toConsole();
@@ -46,6 +47,18 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
     private _gc?: PreventGhostClick;
     private _apiUnregister?: Action;
 
+    /**
+     * The embedded native HA tile card, once HA's card helpers have produced one.
+     *
+     * Undefined means "not built yet"; null means "could not be built", which is a
+     * permanent decision for this card instance and switches rendering to the fallback
+     * surface rather than retrying on every update.
+     */
+    private _tileElement?: LovelaceCard | null;
+    private _tileBuilding = false;
+    private _tileTitle?: string;
+    private _tileTapBound = false;
+
     public constructor() {
         super('HueLikeLightCard');
     }
@@ -65,6 +78,12 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
 
         // set hass instance where needed
         this.trySetHassWhereNeeded();
+
+        // The embedded tile is a real HA card and needs the same hass every update,
+        // otherwise it renders a stale entity state.
+        if (this._tileElement) {
+            this._tileElement.hass = hass;
+        }
 
         // custom @property() implementation
         this.requestUpdate(nameof(this, 'hass'), oldHass);
@@ -145,7 +164,12 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
 
         // For theme color set background to null
         const offColor = this._config.getOffColor();
-        if (!offColor.isThemeColor()) {
+        if (this._config.tileStyle) {
+            // Tile parity: the off state must be the theme's card background, exactly as a
+            // native tile is, so an explicit offColor is deliberately ignored here.
+            this._offBackground = null;
+        }
+        else if (!offColor.isThemeColor()) {
             this._offBackground = new Background([offColor.getBaseColor()]);
         }
         else {
@@ -318,6 +342,88 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
         display:flex;
         overflow:auto;
     }
+
+    /* Native tile mode: the embedded card is a real ha-card, so this host must add
+       nothing of its own — no surface, no padding, no shadow. */
+    .native-tile-host
+    {
+        display: block;
+    }
+
+    /* ============================================================
+       Tile parity (fork-only)
+       Mirrors HA's hui-tile-card chrome so these cards can sit next
+       to native tiles without reading as a different design.
+       Geometry below was measured off a rendered hui-tile-card.
+       The ON state deliberately keeps the hue colour-on-background
+       behaviour; only the OFF state adopts the theme card surface.
+       ============================================================ */
+    ha-card.tile-style
+    {
+        min-height: 0;
+        --hue-card-margin: 10px;
+    }
+    ha-card.tile-style.state-off
+    {
+        /* match a native tile exactly rather than the configured offColor */
+        background: var(--ha-card-background);
+    }
+    ha-card.tile-style
+    {
+        box-shadow: var(--ha-card-box-shadow, none);
+    }
+    ha-card.tile-style div.main-info
+    {
+        padding: 0 10px;
+        align-items: center;
+    }
+    ha-card.tile-style div.tap-area
+    {
+        height: 56px;
+        gap: 10px;
+    }
+    ha-card.tile-style ha-icon
+    {
+        --mdc-icon-size: 24px;
+        width: 36px;
+        height: 36px;
+        margin-left: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    ha-card.tile-style .text-area.no-switch
+    {
+        margin-right: 0;
+    }
+    ha-card.tile-style .text-area h2
+    {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 22.4px;
+        letter-spacing: 0.1px;
+    }
+    ha-card.tile-style .text-area .desc
+    {
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 14.4px;
+        letter-spacing: 0.4px;
+    }
+    /* Only recolour text when off: when on, --hue-text-color is what keeps the
+       label readable against a bright light colour. */
+    ha-card.tile-style.state-off .text-area h2
+    {
+        color: var(--primary-text-color);
+    }
+    ha-card.tile-style.state-off .text-area .desc
+    {
+        color: var(--secondary-text-color);
+    }
+    ha-card.tile-style.state-off ha-icon
+    {
+        color: var(--primary-text-color);
+    }
     `;
 
     protected override updated(changedProps: PropertyValues): void {
@@ -349,6 +455,12 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
     private updateStylesInner(forceRefresh = false): void {
         // no config or controller, do nothing
         if (!this._config || !this._ctrl)
+            return;
+
+        // In native tile mode none of the work below reaches the screen: the embedded HA
+        // tile styles itself. Skipping it avoids probing the DOM with a throwaway ha-card
+        // and recomputing backgrounds and shadows on every state change, for every card.
+        if (this.useNativeTile())
             return;
 
         if (!this._switchColorDetected) {
@@ -415,10 +527,14 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
             '--hue-text-color',
             bfg.foreground?.toString() ?? Consts.ThemeSecondaryTextColorVar
         );
-        this.style.setProperty(
-            '--ha-card-box-shadow',
-            shadow
-        );
+        // In tile mode the theme owns --ha-card-box-shadow (the glass inset set). Overwriting
+        // it here is what makes the card carry a different shadow to every tile beside it.
+        if (!this._config.tileStyle) {
+            this.style.setProperty(
+                '--ha-card-box-shadow',
+                shadow
+            );
+        }
         this.style.setProperty(
             '--hue-box-shadow',
             shadow
@@ -456,13 +572,27 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
         const title = titleTemplate.resolveToString(this._hass);
         const description = descriptionTemplate.resolveToString(this._hass);
 
+        // Native tile mode: hand rendering to a genuine HA tile card.
+        if (this.useNativeTile()) {
+            this.ensureTileElement(title);
+            if (this._tileElement) {
+                return html`<div class="native-tile-host">${this._tileElement}</div>`;
+            }
+            if (this._tileElement === undefined) {
+                // still being built — render nothing rather than flashing the fallback
+                return nothing;
+            }
+            // _tileElement === null: helpers unavailable, fall through to the CSS surface
+        }
+
         const showSwitch = this._config.showSwitch;
         const textClass = { 'text-area': true, 'no-switch': !showSwitch };
         const cardClass = {
             'state-on': this._ctrl.isOn(),
             'state-off': this._ctrl.isOff(),
             'state-unavailable': this._ctrl.isUnavailable(),
-            'hue-borders': this._config.hueBorders
+            'hue-borders': this._config.hueBorders,
+            'tile-style': this._config.tileStyle
         };
 
         return html`<ha-card class="${classMap(cardClass)}">
@@ -488,6 +618,63 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
         this.setupListeners();
     }
 
+    /**
+     * Whether this card should render as an embedded native HA tile.
+     *
+     * A native tile binds to exactly one entity, so a card without a `groupEntity` has
+     * nothing to bind to and keeps the card's own aggregate surface instead.
+     */
+    private useNativeTile(): boolean {
+        return !!this._config?.tileStyle && !!this._config?.groupEntity;
+    }
+
+    /**
+     * Build the embedded tile once, and rebuild it when the resolved title changes.
+     */
+    private ensureTileElement(title: string): void {
+        if (!this._config || !this._hass) {
+            return;
+        }
+        // Already built and the title still matches — nothing to do.
+        if (this._tileElement !== undefined && this._tileTitle === title) {
+            return;
+        }
+        if (this._tileBuilding) {
+            return;
+        }
+
+        this._tileBuilding = true;
+        const config = this._config;
+        const hass = this._hass;
+        NativeTileFactory.create(config, title, hass)
+            .then((element) => {
+                this._tileElement = element;
+                this._tileTitle = title;
+                this._tileBuilding = false;
+                this.requestUpdate();
+            })
+            .catch(() => {
+                this._tileElement = null;
+                this._tileBuilding = false;
+                this.requestUpdate();
+            });
+    }
+
+    /**
+     * Intercept taps on the embedded tile and open the Hue dialog.
+     *
+     * Registered in the capture phase deliberately: `ha-tile-container` calls
+     * `stopPropagation` on click, so a bubbling listener on the host never fires.
+     */
+    private readonly onTileTap = (ev: Event): void => {
+        if (NativeTileFactory.isInteractiveTarget(ev)) {
+            return; // the user is working the brightness slider
+        }
+        ev.stopPropagation();
+        ev.preventDefault();
+        this.cardClicked();
+    };
+
     public override disconnectedCallback(): void {
         super.disconnectedCallback();
         this.destroyListeners();
@@ -497,6 +684,16 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
         if (!this._ctrlListenerRegistered && this._ctrl) {
             this._ctrlListenerRegistered = true;
             this._ctrl.registerOnPropertyChanged(this._elementId, this.onChangeHandler);
+        }
+
+        // Native tile mode owns its own tap handling; the hue surface is not rendered.
+        if (this.useNativeTile()) {
+            const host = this.renderRoot.querySelector('.native-tile-host');
+            if (host && !this._tileTapBound) {
+                this._tileTapBound = true;
+                host.addEventListener('click', this.onTileTap, { capture: true });
+            }
+            return;
         }
 
         const tapArea = this.renderRoot.querySelector('.tap-area');
@@ -523,6 +720,11 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
         if (this._ctrl) {
             this._ctrl.unregisterOnPropertyChanged(this._elementId);
             this._ctrlListenerRegistered = false;
+        }
+        if (this._tileTapBound) {
+            const host = this.renderRoot.querySelector('.native-tile-host');
+            host?.removeEventListener('click', this.onTileTap, { capture: true });
+            this._tileTapBound = false;
         }
         if (this._mc) {
             this._mc.destroy();

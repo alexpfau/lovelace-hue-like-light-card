@@ -266,6 +266,13 @@ export interface HueLikeLightCardConfigInterface extends HueLikeLightCardEntityC
     readonly hueScreenBgColor?: string;
     readonly offShadow?: boolean;
     readonly hueBorders?: boolean;
+    /**
+     * Render the card with Home Assistant tile-card chrome: the theme's card
+     * background and shadow, tile icon geometry and tile typography.
+     * The hue colour-on-background behaviour is kept for the ON state.
+     * Defaults to true in this fork.
+     */
+    readonly tileStyle?: boolean;
     readonly apiId?: string;
     readonly isVisible?: boolean;
     /** Support for card-mod styling */
