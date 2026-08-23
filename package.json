@@ -47,6 +47,7 @@
         "fixnbuild": "npm run lintfix && npm run rollup",
         "lint": "eslint src/** tests/**",
         "lintfix": "eslint src/** tests/** --fix",
-        "rollup": "rollup -c"
+        "rollup": "rollup -c",
+        "deploy": "node scripts/deploy-to-ha.mjs"
     }
 }

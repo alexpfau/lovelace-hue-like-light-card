@@ -68,12 +68,37 @@ reaches the screen once HA owns the rendering.
 ## Building and deploying
 
 Development build (`Consts.Dev = true`) registers every element with a `-test` postfix, so
-`custom:hue-like-light-card-test` can be tested alongside the stock HACS card:
+`custom:hue-like-light-card-test` can be tested alongside a stock installation:
 
 ```bash
 npx rollup -c            # -> dist/hue-like-light-card.js
 ```
 
-A production build flips `Dev = false` and minifies, exactly as upstream's release workflow
-does. It registers as `hue-like-light-card`, so it **must not** be loaded at the same time
-as the stock card — two modules defining the same element will throw.
+To ship a change to Home Assistant:
+
+```bash
+npm run deploy
+```
+
+`scripts/deploy-to-ha.mjs` flips `Dev = false`, minifies, deploys to
+`/Volumes/config/www/community/hue-like-light-card-alexpfau/`, then reverts the working
+tree — unconditionally, because a half-reverted tree would silently poison the next dev
+build. It verifies the flip landed and re-hashes the copy on the share rather than trusting
+that the write succeeded.
+
+## How this is installed
+
+**Not through HACS.** The stock `Gh61/lovelace-hue-like-light-card` has been uninstalled,
+because a HACS update of it would re-add its own Lovelace resource and two modules would
+then define `hue-like-light-card` — breaking every card on the dashboard.
+
+Instead the Lovelace resource points directly at this fork's build:
+
+```
+/hacsfiles/hue-like-light-card-alexpfau/hue-like-light-card.js?v=1
+```
+
+Bump `?v=N` after a deploy so browsers and the tablet pick the new bundle up. Reverting to
+upstream is a HACS reinstall plus pointing that resource back at
+`/hacsfiles/lovelace-hue-like-light-card/hue-like-light-card.js`.
+
