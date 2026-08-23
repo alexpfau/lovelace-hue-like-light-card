@@ -332,8 +332,8 @@ export class HueLightDetail extends IdLitElement {
     private createSwitchDetail() {
         const light = this._lastRenderedContainer!;
         const colors = {
-            '--control-switch-on-color': Consts.WarmColor,
-            '--control-switch-off-color': Consts.OffColor
+            '--control-switch-on-color': `var(--state-icon-active-color, ${Consts.WarmColor})`,
+            '--control-switch-off-color': `var(--state-icon-color, ${Consts.OffColor})`
         };
 
         return html`

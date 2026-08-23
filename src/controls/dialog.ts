@@ -3,7 +3,6 @@ import { html, unsafeStatic } from 'lit/static-html.js';
 import { customElement } from 'lit/decorators.js';
 import { classMap } from 'lit-html/directives/class-map.js';
 import { Background } from '../core/colors/background';
-import { Color } from '../core/colors/color';
 import { AreaLightController } from '../core/area-light-controller';
 import { ViewUtils } from '../core/view-utils';
 import { HueLikeLightCardConfig, HueLikeLightCardEntityConfigCollection } from '../types/config';
@@ -247,6 +246,11 @@ export class HueDialog extends IdLitElement {
             document.body.appendChild(this);
         }
 
+        // The dialog is mounted outside the themed view subtree, so it inherits none of the
+        // theme's custom properties. Copy them from the card that opened it, otherwise every
+        // var(--ha-…) below falls back and the dialog renders unthemed.
+        ThemeHelper.copyThemeContext(this._actionHandler.owner, this);
+
         // register update delegate (include hass - we need to update the dialog)
         this._ctrl.registerOnPropertyChanged(this._elementId, this.onChangeHandler, /* includeHass: */ true);
     }
@@ -366,13 +370,13 @@ export class HueDialog extends IdLitElement {
     .hue-heading {
         --hue-heading-text-color: var(--hue-text-color, ${unsafeCSS(Consts.ThemeDialogHeadingColorVar)});
         
-        background:var(--hue-background, ${unsafeCSS(Consts.ThemeCardBackgroundVar)} );
-        box-shadow:var(--hue-box-shadow), 0px 5px 10px rgba(0,0,0,0.5);
+        background:var(--hue-background, ${unsafeCSS(Consts.ThemeDialogSurfaceBackgroundVar)} );
+        box-shadow:var(--hue-box-shadow), ${unsafeCSS(Consts.HueShadow)};
         transition:${unsafeCSS(Consts.TransitionDefault)};
 
-        border-bottom-left-radius: var(--ha-dialog-border-radius, 28px);
-        border-bottom-right-radius: var(--ha-dialog-border-radius, 28px);
-        padding-bottom: calc(var(--ha-dialog-border-radius, 28px) / 2);
+        border-bottom-left-radius: var(--ha-dialog-border-radius, ${unsafeCSS(Consts.HueBorderRadiusVar)});
+        border-bottom-right-radius: var(--ha-dialog-border-radius, ${unsafeCSS(Consts.HueBorderRadiusVar)});
+        padding-bottom: calc(var(--ha-dialog-border-radius, ${unsafeCSS(Consts.HueBorderRadiusVar)}) / 2);
 
         /* HA will show bottom border when scrolled down */
         border-bottom-width: 0;
@@ -456,13 +460,13 @@ export class HueDialog extends IdLitElement {
     
     /* Handle */
     ::-webkit-scrollbar-thumb {
-        border-radius: 5px;
-        background: #888; 
+        border-radius: calc(${unsafeCSS(Consts.HueBorderRadiusVar)} / 2);
+        background: var(--ha-scrollbar-thumb-color, #888);
     }
 
     /* Handle on hover */
     ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
+        background: var(--ha-scrollbar-thumb-hover-color, #555);
     }
 
     @media screen and (max-width: 768px){
@@ -529,11 +533,11 @@ export class HueDialog extends IdLitElement {
                     backdropElement.style.position = 'absolute';
                     backdropElement.style.width = '100%';
                     backdropElement.style.height = '100%';
-                    backdropElement.style.borderRadius = 'var(--ha-dialog-border-radius, 28px)'; // same as dialog
+                    backdropElement.style.borderRadius = `var(--ha-dialog-border-radius, ${Consts.HueBorderRadiusVar})`; // same as dialog
                     backdropElement.style.background = 'var(--hue-background)';
                     backdropElement.style.transition = Consts.TransitionDefault;
 
-                    const mask = 'linear-gradient(rgba(255, 255, 255, .25) 0%, transparent 70%)';
+                    const mask = 'linear-gradient(var(--ha-dialog-surface-highlight-color, rgba(255, 255, 255, .25)) 0%, transparent 70%)';
                     backdropElement.style.mask = mask;
                     backdropElement.style.webkitMask = mask;
                     //backdropElement.style.zIndex = '0';
@@ -631,7 +635,7 @@ export class HueDialog extends IdLitElement {
             }
         }
         else {
-            offBackground = new Background([new Color(Consts.DialogOffColor)]);
+            offBackground = null;
         }
 
         const bfg = ViewUtils.calculateBackAndForeground(this._ctrl, offBackground, true);
@@ -640,13 +644,13 @@ export class HueDialog extends IdLitElement {
         if (this._config.hueBorders) {
             this.style.setProperty(
                 '--ha-dialog-border-radius',
-                Consts.HueBorderRadius + 'px'
+                Consts.HueBorderRadiusVar
             );
         }
 
         this.style.setProperty(
             '--hue-background',
-            bfg.background?.toString() ?? Consts.ThemeCardBackgroundVar
+            bfg.background?.toString() ?? Consts.DialogOffColorVar
         );
         this.style.setProperty(
             '--hue-box-shadow',

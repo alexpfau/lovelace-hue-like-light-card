@@ -284,7 +284,7 @@ export class HueBrightnessRollup extends LitElement {
     }
 
     #wrapper{
-        color: white;
+        color: ${unsafeCSS(Consts.ThemePrimaryTextColorVar)};
     }
     #bar{
         position: relative;
@@ -347,10 +347,10 @@ export class HueBrightnessRollup extends LitElement {
         overflow: hidden;
     }
     #value{
-        background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 100%);
+        background: linear-gradient(180deg, var(--ha-dialog-brightness-gradient-start, rgba(255,255,255,0.8)) 0%, var(--ha-dialog-brightness-gradient-end, rgba(255,255,255,0.1)) 100%);
     }
     #desc span{
-        border-radius: 10px;
+        border-radius: ${unsafeCSS(Consts.HueBorderRadiusVar)};
         padding: 0 4px;
     }
     .open #desc span{

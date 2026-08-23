@@ -61,7 +61,7 @@ export abstract class HueDialogTile extends IdLitElement {
         width: ${HueDialogTile.width}px;
         height: ${HueDialogTile.height}px;
         padding: ${HueDialogTile.padding}px;
-        border-radius: ${Consts.HueBorderRadius}px;
+        border-radius: ${unsafeCSS(Consts.HueBorderRadiusVar)};
         box-shadow: ${unsafeCSS(Consts.HueShadow)};
         overflow:hidden;
         user-select: none;
@@ -71,7 +71,7 @@ export abstract class HueDialogTile extends IdLitElement {
         transform: scale(0.95);
     }
     .title {
-        color:${unsafeCSS(Consts.LightColor)};
+        color:${unsafeCSS(Consts.ThemePrimaryTextColorVar)};
         font-size: 12px;
         line-height: 15px;
         font-weight:400;

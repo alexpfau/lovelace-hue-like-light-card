@@ -209,7 +209,7 @@ export class HueBigSwitch extends LitElement {
           transition: transform 180ms ease-in-out,
             background-color 180ms ease-in-out;
           background-color: var(--control-switch-off-color);
-          color: white;
+          color: var(--primary-text-color, white);
           display: flex;
           align-items: center;
           justify-content: center;

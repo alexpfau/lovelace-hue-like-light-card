@@ -6,6 +6,61 @@ import { Consts } from './consts';
  * Contains methods with styles, that allow changing theme of single element.
  */
 export class ThemeHelper {
+
+    /**
+     * Copy the theme's custom properties from an element's themed context onto another.
+     *
+     * Home Assistant applies a view-level theme as inline custom properties on an ancestor
+     * of the card — `hui-view-container` in practice. The Hue dialog is appended to
+     * `<home-assistant>` instead, which sits *outside* that subtree, so it inherits none of
+     * them and every `var(--ha-…)` in the dialog silently falls back to its hardcoded
+     * default. That is why the dialog renders as a flat slab next to a glass dashboard.
+     *
+     * Copying across is done from the source's ancestor chain rather than by re-resolving a
+     * theme name, because the theme may come from the user profile, the view or the card,
+     * and only the source element knows which one actually won. The nearest declaration
+     * wins, mirroring normal inheritance.
+     *
+     * @returns the number of custom properties copied.
+     */
+    public static copyThemeContext(source: HTMLElement | null, target: HTMLElement | null): number {
+        if (!source || !target)
+            return 0;
+
+        const collected = new Map<string, string>();
+        let node: HTMLElement | null = source;
+
+        for (let depth = 0; node && depth < 40; depth++) {
+            const inline = node.style;
+            if (inline && inline.length) {
+                for (let i = 0; i < inline.length; i++) {
+                    const name = inline[i];
+                    // Only theme variables. The card's own --hue-* values describe a single
+                    // card's light state and must not leak onto the dialog.
+                    if (!name.startsWith('--') || name.startsWith('--hue-'))
+                        continue;
+                    // Nearest declaration wins.
+                    if (!collected.has(name)) {
+                        collected.set(name, inline.getPropertyValue(name));
+                    }
+                }
+            }
+
+            const parent: HTMLElement | null = node.parentElement;
+            if (parent) {
+                node = parent;
+            }
+            else {
+                const root = node.getRootNode();
+                const host: Element | null = (root as ShadowRoot)?.host ?? null;
+                node = host instanceof HTMLElement ? host : null;
+            }
+        }
+
+        collected.forEach((value, name) => target.style.setProperty(name, value));
+        return collected.size;
+    }
+
     // #region Switch styles
 
     private static switchCheckedButtonColorVar = '--detected-switch-checked-button-color';
@@ -43,14 +98,19 @@ export class ThemeHelper {
 
     public static setDialogThemeStyles(dialog: HueDialog, hueBgColorVariable: string, detectThemeBg: boolean) {
         if (detectThemeBg) {
-            // Detect theme color if needed
-            ThemeHelper.detectThemeCardBackground(dialog, true, 1); // offset: 1 for dialog
+        // Detect theme color if needed
+            ThemeHelper.detectThemeVariableValue(
+                dialog,
+                Consts.ThemeDialogSurfaceBackground,
+                Consts.ThemeDialogSurfacePossibleBackgrounds,
+                'hueDialogBgDetected',
+                true);
         }
 
         // To help change themes on the fly
         dialog.style.setProperty(
             '--ha-dialog-surface-background',
-            `var(${hueBgColorVariable}, ${Consts.ThemeCardBackgroundVar})`
+            `var(${hueBgColorVariable}, ${Consts.ThemeDialogSurfaceBackgroundVar})`
         );
     }
 
@@ -159,5 +219,29 @@ export class ThemeHelper {
         }
 
         element.dataset[detectedIdentifier] = attrValue;
+    }
+
+    private static detectThemeVariableValue(element: HTMLElement, targetVariable: string, possibleVariables: string[],
+        detectedIdentifier: string, force = false): void {
+        if (element.dataset[detectedIdentifier] && !force)
+            return;
+
+        const cptStyle = getComputedStyle(element);
+        let detectedVariable = 'none';
+        for (const possibleVar of possibleVariables) {
+            const value = cptStyle.getPropertyValue(possibleVar);
+            if (!value) {
+                continue;
+            }
+
+            element.style.setProperty(
+                targetVariable,
+                value.trim()
+            );
+            detectedVariable = possibleVar;
+            break;
+        }
+
+        element.dataset[detectedIdentifier] = detectedVariable;
     }
 }

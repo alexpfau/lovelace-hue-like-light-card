@@ -316,7 +316,7 @@ export class HueColorTempPickerMarker {
 
     public static styles = css`
         .marker-outline {
-            fill: white;
+            fill: var(--primary-text-color, white);
             filter: url(#dot-shadow);
             transform: translate(-2px, -2px);
         }
@@ -326,7 +326,7 @@ export class HueColorTempPickerMarker {
         .icon {
             transform: scale(1.2) translate(8px, 8px);
             transition: ${unsafeCSS(Consts.TransitionDefault)};
-            fill: white;
+            fill: var(--primary-text-color, white);
             display: none;
         }
         .icon.text {

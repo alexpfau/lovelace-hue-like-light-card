@@ -16,6 +16,11 @@ export class ActionHandler {
         this._owner = element;
     }
 
+    /** The card this handler acts for. */
+    public get owner(): HueLikeLightCard {
+        return this._owner;
+    }
+
     public showMoreInfo(entityId: string): void {
         fireEvent(this._owner, 'hass-more-info', { entityId: entityId });
     }

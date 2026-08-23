@@ -820,7 +820,7 @@ export class HueColorTempPicker extends LitElement {
         display: block;
     }
     #interactionLayer {
-        color: white;
+        color: ${unsafeCSS(Consts.ThemePrimaryTextColorVar)};
         position: absolute;
         width: 100%;
         height: 100%;

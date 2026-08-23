@@ -129,17 +129,17 @@ export abstract class HueDialogSceneTile extends HueDialogTile {
         height: ${HueDialogSceneTile.pictureDimensions}px;
         width: ${HueDialogSceneTile.pictureDimensions}px;
         border-radius: ${HueDialogSceneTile.pictureDimensions / 2}px;
-        box-shadow: ${unsafeCSS(Consts.HueShadow)}, inset rgba(0,0,0,0.1) -8px -8px 15px;
+        box-shadow: ${unsafeCSS(Consts.HueShadow)}, inset var(--divider-color, rgba(0,0,0,0.1)) -8px -8px 15px;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all ${HueDialogSceneTile.animationSeconds}s linear;
     }
     .scene .icon-background .color {
-        background: var(--hue-tile-accent-color, darkgoldenrod);
+        background: var(--hue-tile-accent-color, var(--state-icon-active-color, darkgoldenrod));
     }
     .scene .icon-background .color ha-icon {
-        color: var(--hue-tile-fg-color, ${unsafeCSS(Consts.LightColor)});
+        color: var(--hue-tile-fg-color, ${unsafeCSS(Consts.ThemePrimaryTextColorVar)});
         transform: scale(${HueDialogSceneTile.iconScale});
     }
     .scene .icon-background .picture-color .picture {
@@ -152,7 +152,7 @@ export abstract class HueDialogSceneTile extends HueDialogTile {
     }
 
     .scene.clicked .icon-background .picture-color {
-        background: var(--hue-tile-accent-color, darkgoldenrod);
+        background: var(--hue-tile-accent-color, var(--state-icon-active-color, darkgoldenrod));
     }
     .scene.clicked .icon-background .color,
     .scene.clicked .icon-background .picture-color {
@@ -182,7 +182,7 @@ export abstract class HueDialogSceneTile extends HueDialogTile {
         transition: all ${HueDialogSceneTile.animationSeconds / 2}s linear;
     }
     .scene.clicked .title {
-        color:var(--hue-tile-fg-text-color, ${unsafeCSS(Consts.LightColor)});
+        color:var(--hue-tile-fg-text-color, ${unsafeCSS(Consts.ThemePrimaryTextColorVar)});
     }
 
     @keyframes pop-icon {

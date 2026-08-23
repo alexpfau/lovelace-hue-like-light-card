@@ -114,10 +114,10 @@ export class HueColorTempModeSelector extends LitElement {
     }
     .controls .wheel-wrapper:hover,
     .controls .wheel-wrapper:active{
-        background-color: ${unsafeCSS(Consts.TileOffColor)};
+        background-color: var(--secondary-background-color, ${unsafeCSS(Consts.TileOffColorFallback)});
     }
     .controls .wheel-wrapper.active{
-        border-color: white;
+        border-color: var(--primary-color, white);
     }
     .controls .wheel-wrapper .wheel{
         display:inline-block;
@@ -133,7 +133,7 @@ export class HueColorTempModeSelector extends LitElement {
         background-image: url(${unsafeCSS(ControlResources.ModeTempIcon64)});
     }
     .wheel.brightness{
-        color: white;
+        color: ${unsafeCSS(Consts.ThemePrimaryTextColorVar)};
     }
     `;
 

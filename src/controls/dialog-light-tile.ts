@@ -64,9 +64,9 @@ export class HueDialogLightTile extends HueDialogTile {
     }
 
     .selector.active{
-        border: ${HueDialogLightTile.selectorWidth}px solid var(--hue-light-background, ${unsafeCSS(Consts.WarmColor)});
+        border: ${HueDialogLightTile.selectorWidth}px solid var(--hue-light-background, var(--primary-color, ${unsafeCSS(Consts.WarmColor)}));
         padding: ${HueDialogLightTile.selectorSpacing}px;
-        border-radius: ${Consts.HueBorderRadius + HueDialogLightTile.selectorWidth + HueDialogLightTile.selectorSpacing}px;
+        border-radius: calc(${unsafeCSS(Consts.HueBorderRadiusVar)} + ${HueDialogLightTile.selectorWidth + HueDialogLightTile.selectorSpacing}px);
         margin: -${HueDialogLightTile.selectorWidth + HueDialogLightTile.selectorSpacing}px
     }
 
@@ -79,7 +79,7 @@ export class HueDialogLightTile extends HueDialogTile {
     }
 
     .title{
-        color: var(--hue-light-text-color, ${unsafeCSS(Consts.LightColor)});
+        color: var(--hue-light-text-color, ${unsafeCSS(Consts.ThemePrimaryTextColorVar)});
         padding-bottom: ${HueDialogLightTile.titlePadding}px;
         font-weight: 500;
     }
@@ -93,7 +93,7 @@ export class HueDialogLightTile extends HueDialogTile {
         justify-content: center;
     }
     .icon-slot ha-icon {
-        color: var(--hue-light-text-color, ${unsafeCSS(Consts.LightColor)});
+        color: var(--hue-light-text-color, ${unsafeCSS(Consts.ThemePrimaryTextColorVar)});
         transform: scale(${HueDialogSceneTile.iconScale});
     }
 
@@ -104,8 +104,8 @@ export class HueDialogLightTile extends HueDialogTile {
         align-items: center;
 
         height: ${HueDialogLightTile.switchHeight + HueDialogTile.padding}px;
-        background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
-        border-top: 1px solid rgba(80, 80, 80, 0.1);
+        background: linear-gradient(var(--ha-dialog-surface-highlight-color, rgba(255, 255, 255, 0.1)), transparent);
+        border-top: 1px solid var(--divider-color, rgba(80, 80, 80, 0.1));
         box-sizing: content-box;
         margin: 0 -${HueDialogTile.padding}px;
     }

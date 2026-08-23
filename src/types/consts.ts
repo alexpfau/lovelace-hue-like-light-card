@@ -12,7 +12,8 @@ export class Consts {
     public static readonly CardDescription = 'Hue-like way to control your lights' + (Consts.Dev ? ' [TEST]' : '');
 
     public static readonly HueBorderRadius = 10;
-    public static readonly HueShadow = '0px 2px 3px rgba(0,0,0,0.4)';
+    public static readonly HueBorderRadiusVar = `var(--ha-card-border-radius, ${Consts.HueBorderRadius}px)`;
+    public static readonly HueShadow = 'var(--dialog-box-shadow, var(--ha-card-box-shadow, 0px 2px 3px rgba(0,0,0,0.4)))';
     public static readonly LightColor = new Color('#fff');
     public static readonly LightOffColor = new Color('#fff', 0.85);
     public static readonly DarkColor = new Color(0, 0, 0, 0.7);
@@ -21,10 +22,14 @@ export class Consts {
     public static readonly ColdColor = '#f5f5ff';
     public static readonly DefaultColor = 'warm';
     public static readonly OffColor = '#666';
-    public static readonly TileOffColor = 'rgba(102, 102, 102, 0.6)';
-    public static readonly DialogBgColor = '#171717';
+    public static readonly TileOffColorFallback = 'rgba(102, 102, 102, 0.6)';
+    public static readonly TileOffColor = `var(--ha-card-background, ${Consts.TileOffColorFallback})`;
+    public static readonly DialogBgColorFallback = '#171717';
+    public static readonly DialogBgColor = 'theme-color';
     public static readonly DialogFgLightColor = new Color('#aaa');
+    public static readonly DialogFgLightColorVar = 'var(--secondary-text-color, #aaa)';
     public static readonly DialogOffColor = '#363636';
+    public static readonly DialogOffColorVar = `var(--ha-card-background, ${Consts.DialogOffColor})`;
     public static readonly GradientOffset = 7; // percent
     public static readonly TransitionDefault = 'all 0.3s ease-out 0s';
 
@@ -32,15 +37,24 @@ export class Consts {
     public static readonly ThemeDefault = 'default';
     public static readonly ThemeCardBackground = '--hue-detected-card-bg';
     public static readonly ThemeCardBackgroundVar = `var(${Consts.ThemeCardBackground})`;
+    public static readonly ThemeDialogSurfaceBackground = '--hue-detected-dialog-surface-bg';
+    public static readonly ThemeDialogSurfaceBackgroundVar = `var(${Consts.ThemeDialogSurfaceBackground}, var(--ha-card-background, ${Consts.DialogBgColorFallback}))`;
+    public static readonly ThemeDialogSurfacePossibleBackgrounds = [
+        '--ha-dialog-surface-background',
+        '--ha-card-background',
+        '--card-background-color',
+        '--paper-card-background-color',
+        '--primary-background-color'
+    ];
     public static readonly ThemeCardPossibleBackgrounds = [
         '--ha-card-background',
         '--card-background-color',
         '--paper-card-background-color',
         '--primary-background-color'
     ];
-    public static readonly ThemeDialogHeadingColorVar = 'var(--mdc-dialog-heading-ink-color)';
-    public static readonly ThemePrimaryTextColorVar = 'var(--primary-text-color)';
-    public static readonly ThemeSecondaryTextColorVar = 'var(--secondary-text-color)';
+    public static readonly ThemeDialogHeadingColorVar = `var(--mdc-dialog-heading-ink-color, ${Consts.DialogFgLightColorVar})`;
+    public static readonly ThemePrimaryTextColorVar = `var(--primary-text-color, ${Consts.LightColor.toString()})`;
+    public static readonly ThemeSecondaryTextColorVar = `var(--secondary-text-color, ${Consts.DialogFgLightColor.toString()})`;
 
     // Icon size
     public static readonly IconSize:Record<KnownIconSize, number> = {
