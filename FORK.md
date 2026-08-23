@@ -24,10 +24,22 @@ Tap handling:
 
 - every tile action (`tap_action`, `icon_tap_action`, `hold_action`, `double_tap_action`)
   is set to `none`;
-- the card listens for `click` **in the capture phase**, because `ha-tile-container` calls
-  `stopPropagation` on click and a bubbling listener on the host would never fire;
-- taps whose `composedPath()` passes through a slider or card feature are ignored, so
-  dragging brightness does not open the dialog.
+- the card listens for **pointer** events in the **capture phase**.
+
+Both of those are load-bearing:
+
+*Capture phase*, because `ha-tile-container` calls `stopPropagation`, so a bubbling
+listener on the host never fires.
+
+*Pointer events rather than `click`*, because Home Assistant's tile calls
+`preventDefault()` on the touch sequence. On a touch device no click is ever synthesised,
+so a `click` listener made the card work perfectly with a mouse and do nothing at all on
+the tablet it was built for. `pointerup` covers mouse, touch and pen alike.
+
+A press is only treated as a tap when the pointer travelled less than `TapSlopPx` (10px),
+so scrolling the dashboard by dragging across a card does not open the dialog. A press held
+`HoldMs` (500ms) or longer fires the hold action instead. Presses that pass through a
+slider or card feature are ignored entirely, so dragging brightness still works.
 
 ### 2. The Hue dialog follows the active theme
 

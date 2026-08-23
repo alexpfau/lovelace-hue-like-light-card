@@ -117,4 +117,10 @@ export class NativeTileFactory {
         }
         return false;
     }
+
+    /** Pointer travel beyond this (px) is a scroll or a drag, not a tap. */
+    public static readonly TapSlopPx = 10;
+
+    /** A press held at least this long (ms) is a hold rather than a tap. */
+    public static readonly HoldMs = 500;
 }
