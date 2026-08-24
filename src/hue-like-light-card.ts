@@ -57,7 +57,7 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
     private _tileElement?: LovelaceCard | null;
     private _tileBuilding = false;
     private _tileTitle?: string;
-    private _tileTapBound = false;
+    private _tileCustomEventBound = false;
 
     public constructor() {
         super('HueLikeLightCard');
@@ -661,54 +661,22 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
     }
 
     /**
-     * Recognise a tap on the embedded tile and open the Hue dialog.
+     * Recognize main-surface actions from the embedded tile.
      *
-     * Pointer events rather than `click`: Home Assistant's tile calls `preventDefault()` on
-     * the touch sequence, so on a touch device no click is ever synthesised and a click
-     * listener never fires. That made the card work with a mouse and do nothing on the
-     * tablet it was built for. `pointerup` covers mouse, touch and pen alike.
-     *
-     * Registered in the capture phase because `ha-tile-container` stops propagation.
+     * HA's native action handler owns pointer/touch semantics, then `fire-dom-event`
+     * emits `ll-custom`. This keeps ripple/hover state intact and avoids synthesized
+     * clicks, which HA suppresses on touch.
      */
-    private _pointerStart?: { x: number; y: number; t: number; ignore: boolean };
-
-    private readonly onTilePointerDown = (ev: Event): void => {
-        const pe = ev as PointerEvent;
-        this._pointerStart = {
-            x: pe.clientX,
-            y: pe.clientY,
-            t: Date.now(),
-            ignore: NativeTileFactory.isInteractiveTarget(ev)
-        };
-    };
-
-    private readonly onTilePointerUp = (ev: Event): void => {
-        const start = this._pointerStart;
-        this._pointerStart = undefined;
-        if (!start || start.ignore) {
-            return; // the user is working the brightness slider
-        }
-        if (NativeTileFactory.isInteractiveTarget(ev)) {
+    private readonly onTileCustomEvent = (ev: Event): void => {
+        const detail = (ev as CustomEvent<{ hue_action?: string }>).detail;
+        ev.stopPropagation();
+        if (detail?.hue_action === 'hold') {
+            this.cardHolded();
             return;
         }
-
-        const pe = ev as PointerEvent;
-        const moved = Math.hypot(pe.clientX - start.x, pe.clientY - start.y);
-        if (moved > NativeTileFactory.TapSlopPx) {
-            return; // a scroll or a drag, not a tap
-        }
-
-        ev.stopPropagation();
-        if (Date.now() - start.t >= NativeTileFactory.HoldMs) {
-            this.cardHolded();
-        }
-        else {
+        if (detail?.hue_action === 'tap') {
             this.cardClicked();
         }
-    };
-
-    private readonly onTilePointerCancel = (): void => {
-        this._pointerStart = undefined;
     };
 
     public override disconnectedCallback(): void {
@@ -722,15 +690,12 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
             this._ctrl.registerOnPropertyChanged(this._elementId, this.onChangeHandler);
         }
 
-        // Native tile mode owns its own tap handling; the hue surface is not rendered.
+        // Native tile mode owns pointer handling; the hue surface is not rendered.
         if (this.useNativeTile()) {
             const host = this.renderRoot.querySelector('.native-tile-host');
-            if (host && !this._tileTapBound) {
-                this._tileTapBound = true;
-                const opts = { capture: true };
-                host.addEventListener('pointerdown', this.onTilePointerDown, opts);
-                host.addEventListener('pointerup', this.onTilePointerUp, opts);
-                host.addEventListener('pointercancel', this.onTilePointerCancel, opts);
+            if (host && !this._tileCustomEventBound) {
+                this._tileCustomEventBound = true;
+                host.addEventListener('ll-custom', this.onTileCustomEvent as EventListener, { capture: true });
             }
             return;
         }
@@ -760,13 +725,10 @@ export class HueLikeLightCard extends IdLitElement implements LovelaceCard {
             this._ctrl.unregisterOnPropertyChanged(this._elementId);
             this._ctrlListenerRegistered = false;
         }
-        if (this._tileTapBound) {
+        if (this._tileCustomEventBound) {
             const host = this.renderRoot.querySelector('.native-tile-host');
-            const opts = { capture: true };
-            host?.removeEventListener('pointerdown', this.onTilePointerDown, opts);
-            host?.removeEventListener('pointerup', this.onTilePointerUp, opts);
-            host?.removeEventListener('pointercancel', this.onTilePointerCancel, opts);
-            this._tileTapBound = false;
+            host?.removeEventListener('ll-custom', this.onTileCustomEvent as EventListener, { capture: true });
+            this._tileCustomEventBound = false;
         }
         if (this._mc) {
             this._mc.destroy();

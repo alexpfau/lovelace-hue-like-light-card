@@ -17,29 +17,34 @@ merges stay cheap.
 via `loadCardHelpers()`, and the card renders that. Parity is therefore structural, not
 cosmetic — it survives HA restyling its own tile card.
 
-The native `light-brightness` tile feature supplies the brightness slider, so the card no
-longer ships its own.
+The native `light-brightness` tile feature supplies the brightness slider unless
+`allowZero: true` is set. In that case the card registers a custom tile feature with the
+same `ha-control-slider` surface, but a zero-capable range.
 
 Tap handling:
 
-- every tile action (`tap_action`, `icon_tap_action`, `hold_action`, `double_tap_action`)
-  is set to `none`;
-- the card listens for **pointer** events in the **capture phase**.
+- `tap_action` and `hold_action` use `fire-dom-event`;
+- the card listens for HA's **`ll-custom`** event in the **capture phase**;
+- `icon_tap_action` stays native and toggles the light.
 
-Both of those are load-bearing:
+Those choices are load-bearing:
 
-*Capture phase*, because `ha-tile-container` calls `stopPropagation`, so a bubbling
-listener on the host never fires.
+*`fire-dom-event` rather than `none`*, because HA's tile only enables the card ripple and
+interactive hover state when `hasAction()` is true.
 
-*Pointer events rather than `click`*, because Home Assistant's tile calls
-`preventDefault()` on the touch sequence. On a touch device no click is ever synthesised,
+*Capture phase*, because the tile emits `ll-custom` and then stops propagation before a
+bubbling listener on a wrapper would see it.
+
+*Native action handling rather than a click listener*, because Home Assistant's tile calls
+`preventDefault()` on the touch sequence. On a touch device no click is ever synthesized,
 so a `click` listener made the card work perfectly with a mouse and do nothing at all on
-the tablet it was built for. `pointerup` covers mouse, touch and pen alike.
+the tablet it was built for.
 
-A press is only treated as a tap when the pointer travelled less than `TapSlopPx` (10px),
-so scrolling the dashboard by dragging across a card does not open the dialog. A press held
-`HoldMs` (500ms) or longer fires the hold action instead. Presses that pass through a
-slider or card feature are ignored entirely, so dragging brightness still works.
+The native action handler now owns tap, hold, scroll-cancel, and touch behavior. Presses
+that pass through a slider or card feature are still ignored by the dialog path, so dragging
+brightness works. When `allowZero` is true, the custom feature maps the physical zero edge
+of `ha-control-slider` back to `light.turn_off`; raising it calls `light.turn_on` with
+`brightness_pct`.
 
 ### 2. The Hue dialog follows the active theme
 
@@ -113,4 +118,3 @@ Instead the Lovelace resource points directly at this fork's build:
 Bump `?v=N` after a deploy so browsers and the tablet pick the new bundle up. Reverting to
 upstream is a HACS reinstall plus pointing that resource back at
 `/hacsfiles/lovelace-hue-like-light-card/hue-like-light-card.js`.
-

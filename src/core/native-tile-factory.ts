@@ -1,4 +1,5 @@
 import { HomeAssistant, LovelaceCard, LovelaceCardConfig } from 'custom-card-helpers';
+import { HueZeroBrightnessCardFeature } from '../controls/zero-brightness-card-feature';
 import { HueLikeLightCardConfig } from '../types/config';
 
 /**
@@ -9,10 +10,9 @@ import { HueLikeLightCardConfig } from '../types/config';
  * Parity is then structural rather than cosmetic, and the native `light-brightness`
  * feature supplies a slider that is, by construction, the one a tile would have.
  *
- * The tile is deliberately configured with every action set to `none`: the whole point of
- * this card is that a tap opens the Hue dialog instead of HA's more-info. Tap handling
- * lives in the card, which listens in the capture phase because `ha-tile-container` stops
- * click propagation before a bubbling listener on a wrapper would ever see it.
+ * The tile's main surface uses `fire-dom-event` instead of `none`, then the owner listens
+ * for HA's `ll-custom` event and opens the Hue dialog. That keeps the real tile's ripple
+ * and hover behavior while avoiding HA's default more-info action.
  */
 export class NativeTileFactory {
     /**
@@ -24,15 +24,20 @@ export class NativeTileFactory {
      */
     public static buildConfig(config: HueLikeLightCardConfig, title: string): LovelaceCardConfig {
         const none = { action: 'none' };
+        const customTap = { action: 'fire-dom-event', hue_action: 'tap' };
+        const customHold = { action: 'fire-dom-event', hue_action: 'hold' };
+        const feature = config.allowZero
+            ? { type: HueZeroBrightnessCardFeature.FeatureType }
+            : { type: 'light-brightness' };
         const tileConfig: LovelaceCardConfig = {
             type: 'tile',
             entity: config.groupEntity,
-            tap_action: none,
-            icon_tap_action: none,
-            hold_action: none,
+            tap_action: customTap,
+            icon_tap_action: { action: 'toggle' },
+            hold_action: customHold,
             double_tap_action: none,
             features_position: 'bottom',
-            features: [{ type: 'light-brightness' }]
+            features: [feature]
         };
 
         if (config.icon) {
@@ -98,6 +103,7 @@ export class NativeTileFactory {
     private static readonly InteractiveTags = [
         'hui-card-features',
         'hui-light-brightness-card-feature',
+        HueZeroBrightnessCardFeature.ElementName,
         'ha-control-slider',
         'ha-control-switch',
         'ha-control-select',
@@ -117,10 +123,4 @@ export class NativeTileFactory {
         }
         return false;
     }
-
-    /** Pointer travel beyond this (px) is a scroll or a drag, not a tap. */
-    public static readonly TapSlopPx = 10;
-
-    /** A press held at least this long (ms) is a hold rather than a tap. */
-    public static readonly HoldMs = 500;
 }
